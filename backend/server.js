@@ -14,6 +14,7 @@ app.use(express.json());
 const users = [];
 const etatConsommable = [];
 const alertes = [];
+const messages = [];
 
 // --- Route de test ---
 app.get("/api/test", (req, res) => {
@@ -119,6 +120,18 @@ app.get("/api/statistiques", verifyToken, (req, res) => {
 // --- Alertes ---
 app.get("/api/alertes", verifyToken, (req, res) => {
   res.json(alertes);
+});
+
+// --- Formulaire de contact (visiteur, pas besoin de token) ---
+app.post("/api/contact", (req, res) => {
+  const { nom, email, sujet, contenu } = req.body;
+
+  if (!nom || !email || !contenu) {
+    return res.status(400).json({ message: "Nom, email et message sont requis." });
+  }
+
+  messages.push({ id: Date.now(), nom, email, sujet, contenu });
+  res.status(201).json({ message: "Votre message a bien été envoyé. Merci !" });
 });
 
 app.listen(PORT, () => {
