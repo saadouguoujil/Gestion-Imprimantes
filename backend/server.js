@@ -10,8 +10,10 @@ const JWT_SECRET = "mon-secret-temporaire"; // à mettre dans .env plus tard
 app.use(cors());
 app.use(express.json());
 
-// Tableau temporaire en mémoire (remplacé par une vraie BDD plus tard)
+// --- Tableaux temporaires en mémoire (remplacés par une vraie BDD plus tard) ---
 const users = [];
+const etatConsommable = [];
+const alertes = [];
 
 // --- Route de test ---
 app.get("/api/test", (req, res) => {
@@ -61,7 +63,7 @@ app.post("/api/login", async (req, res) => {
 // --- Middleware : vérifie le token JWT ---
 function verifyToken(req, res, next) {
   const header = req.headers["authorization"];
-  const token = header && header.split(" ")[1]; // "Bearer xxxxx" -> on garde xxxxx
+  const token = header && header.split(" ")[1];
 
   if (!token) {
     return res.status(401).json({ message: "Token manquant." });
@@ -71,7 +73,7 @@ function verifyToken(req, res, next) {
     if (err) {
       return res.status(403).json({ message: "Token invalide ou expiré." });
     }
-    req.user = payload; // { id, pseudo, iat, exp }
+    req.user = payload;
     next();
   });
 }
@@ -79,6 +81,44 @@ function verifyToken(req, res, next) {
 // --- Route protégée : profil ---
 app.get("/api/profile", verifyToken, (req, res) => {
   res.json({ id: req.user.id, pseudo: req.user.pseudo });
+});
+
+// --- Import d'un état consommable + alerte automatique ---
+app.post("/api/etat-consommable", verifyToken, (req, res) => {
+  const { composant, pourcentage } = req.body;
+
+  const entree = { id: Date.now(), composant, pourcentage };
+  etatConsommable.push(entree);
+
+  if (pourcentage < 15) {
+    alertes.push({
+      id: Date.now() + 1,
+      nom: `Niveau bas : ${composant}`,
+      description: `Le composant "${composant}" est à ${pourcentage}%. Remplacement recommandé.`,
+    });
+  }
+
+  res.status(201).json(entree);
+});
+
+// --- Statistiques ---
+app.get("/api/statistiques", verifyToken, (req, res) => {
+  const moyenne =
+    etatConsommable.length > 0
+      ? Math.round(
+          etatConsommable.reduce((somme, e) => somme + e.pourcentage, 0) / etatConsommable.length
+        )
+      : 0;
+
+  res.json({
+    pourcentageEtatConsommable: moyenne,
+    nombreAlertes: alertes.length,
+  });
+});
+
+// --- Alertes ---
+app.get("/api/alertes", verifyToken, (req, res) => {
+  res.json(alertes);
 });
 
 app.listen(PORT, () => {
