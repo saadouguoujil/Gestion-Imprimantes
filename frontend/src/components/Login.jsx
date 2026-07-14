@@ -1,12 +1,12 @@
 import { useState } from "react";
 
-export default function Login() {
+export default function Login({ onLoggedIn }) {
   const [pseudo, setPseudo] = useState("");
   const [motDePasse, setMotDePasse] = useState("");
   const [message, setMessage] = useState("");
 
   async function handleSubmit(e) {
-    e.preventDefault(); // empêche la page de se recharger
+    e.preventDefault();
 
     try {
       const response = await fetch("http://localhost:4000/api/login", {
@@ -18,12 +18,12 @@ export default function Login() {
       const data = await response.json();
 
       if (!response.ok) {
-        setMessage(data.message); // ex: "Identifiants incorrects."
+        setMessage(data.message);
         return;
       }
 
       localStorage.setItem("token", data.token);
-      setMessage("Connexion réussie !");
+      onLoggedIn(); // <-- prévient App.jsx que la connexion a réussi
     } catch (err) {
       setMessage("Erreur : impossible de contacter le serveur.");
     }
