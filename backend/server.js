@@ -13,6 +13,8 @@ app.use(express.json());
 // --- Tableaux temporaires en mémoire ---
 const users = [];
 const etatConsommable = [];
+const etatPlateau = [];
+const etatImpression = [];
 const alertes = [];
 const messages = [];
 const historique = [];
@@ -125,17 +127,48 @@ app.post("/api/etat-consommable", verifyToken, (req, res) => {
   res.status(201).json(entree);
 });
 
+// --- Import d'un état plateau ---
+app.post("/api/etat-plateau", verifyToken, (req, res) => {
+  const { nom, etat, quantite, format, couleur } = req.body;
+
+  const entree = { id: Date.now(), nom, etat, quantite, format, couleur };
+  etatPlateau.push(entree);
+
+  ajouterHistorique(`${req.user.pseudo} a importé l'état plateau "${nom}" (${quantite}%)`);
+
+  res.status(201).json(entree);
+});
+
+// --- Import d'un état impression ---
+app.post("/api/etat-impression", verifyToken, (req, res) => {
+  const { article, type, nbrPages, destination } = req.body;
+
+  const entree = { id: Date.now(), article, type, nbrPages, destination };
+  etatImpression.push(entree);
+
+  ajouterHistorique(`${req.user.pseudo} a importé une impression : "${article}" (${nbrPages} pages)`);
+
+  res.status(201).json(entree);
+});
+
 // --- Statistiques ---
 app.get("/api/statistiques", verifyToken, (req, res) => {
-  const moyenne =
+  const moyenneConsommable =
     etatConsommable.length > 0
       ? Math.round(
-          etatConsommable.reduce((somme, e) => somme + e.pourcentage, 0) / etatConsommable.length
+          etatConsommable.reduce((s, e) => s + e.pourcentage, 0) / etatConsommable.length
         )
       : 0;
 
+  const moyennePlateau =
+    etatPlateau.length > 0
+      ? Math.round(etatPlateau.reduce((s, e) => s + Number(e.quantite), 0) / etatPlateau.length)
+      : 0;
+
   res.json({
-    pourcentageEtatConsommable: moyenne,
+    pourcentageEtatConsommable: moyenneConsommable,
+    pourcentageEtatPlateau: moyennePlateau,
+    nombreImpressions: etatImpression.length,
     nombreAlertes: alertes.length,
   });
 });
