@@ -10,7 +10,7 @@ const JWT_SECRET = "mon-secret-temporaire"; // à mettre dans .env plus tard
 app.use(cors());
 app.use(express.json());
 
-// --- Tableaux temporaires en mémoire (remplacés par une vraie BDD plus tard) ---
+// --- Tableaux temporaires en mémoire ---
 const users = [];
 const etatConsommable = [];
 const alertes = [];
@@ -23,7 +23,7 @@ app.get("/api/test", (req, res) => {
 
 // --- Inscription ---
 app.post("/api/register", async (req, res) => {
-  const { pseudo, motDePasse } = req.body;
+  const { pseudo, motDePasse, role } = req.body;
 
   if (!pseudo || !motDePasse) {
     return res.status(400).json({ message: "Pseudo et mot de passe requis." });
@@ -35,9 +35,11 @@ app.post("/api/register", async (req, res) => {
   }
 
   const motDePasseHache = await bcrypt.hash(motDePasse, 10);
-  users.push({ id: Date.now(), pseudo, motDePasse: motDePasseHache });
+  const roleFinal = role === "admin" ? "admin" : "user"; // par défaut : user
 
-  res.status(201).json({ message: "Compte créé avec succès." });
+  users.push({ id: Date.now(), pseudo, motDePasse: motDePasseHache, role: roleFinal });
+
+  res.status(201).json({ message: "Compte créé avec succès.", role: roleFinal });
 });
 
 // --- Connexion ---
@@ -54,9 +56,11 @@ app.post("/api/login", async (req, res) => {
     return res.status(401).json({ message: "Identifiants incorrects." });
   }
 
-  const token = jwt.sign({ id: utilisateur.id, pseudo: utilisateur.pseudo }, JWT_SECRET, {
-    expiresIn: "2h",
-  });
+  const token = jwt.sign(
+    { id: utilisateur.id, pseudo: utilisateur.pseudo, role: utilisateur.role },
+    JWT_SECRET,
+    { expiresIn: "2h" }
+  );
 
   res.json({ message: "Connexion réussie.", token });
 });
@@ -79,9 +83,17 @@ function verifyToken(req, res, next) {
   });
 }
 
+// --- Middleware : vérifie que l'utilisateur est admin ---
+function verifyAdmin(req, res, next) {
+  if (req.user.role !== "admin") {
+    return res.status(403).json({ message: "Accès réservé à l'administrateur." });
+  }
+  next();
+}
+
 // --- Route protégée : profil ---
 app.get("/api/profile", verifyToken, (req, res) => {
-  res.json({ id: req.user.id, pseudo: req.user.pseudo });
+  res.json({ id: req.user.id, pseudo: req.user.pseudo, role: req.user.role });
 });
 
 // --- Import d'un état consommable + alerte automatique ---
@@ -132,6 +144,25 @@ app.post("/api/contact", (req, res) => {
 
   messages.push({ id: Date.now(), nom, email, sujet, contenu });
   res.status(201).json({ message: "Votre message a bien été envoyé. Merci !" });
+});
+
+// --- Admin : liste des utilisateurs ---
+app.get("/api/admin/users", verifyToken, verifyAdmin, (req, res) => {
+  const usersSansMdp = users.map(({ motDePasse, ...u }) => u);
+  res.json(usersSansMdp);
+});
+
+// --- Admin : supprimer un utilisateur ---
+app.delete("/api/admin/users/:id", verifyToken, verifyAdmin, (req, res) => {
+  const idASupprimer = Number(req.params.id);
+  const index = users.findIndex((u) => u.id === idASupprimer);
+
+  if (index === -1) {
+    return res.status(404).json({ message: "Utilisateur introuvable." });
+  }
+
+  users.splice(index, 1);
+  res.json({ message: "Utilisateur supprimé." });
 });
 
 app.listen(PORT, () => {

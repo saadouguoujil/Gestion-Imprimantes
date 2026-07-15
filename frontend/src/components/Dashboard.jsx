@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import Admin from "./Admin.jsx";
 
 export default function Dashboard({ onLogout }) {
   const [profil, setProfil] = useState(null);
@@ -7,6 +8,7 @@ export default function Dashboard({ onLogout }) {
   const [composant, setComposant] = useState("Toner Noir");
   const [pourcentage, setPourcentage] = useState(50);
   const [erreur, setErreur] = useState("");
+  const [pageAdmin, setPageAdmin] = useState(false);
 
   const token = localStorage.getItem("token");
   const headers = { Authorization: `Bearer ${token}` };
@@ -37,12 +39,16 @@ export default function Dashboard({ onLogout }) {
       headers: { "Content-Type": "application/json", ...headers },
       body: JSON.stringify({ composant, pourcentage: Number(pourcentage) }),
     });
-    chargerDonnees(); // recharge les stats + alertes après l'import
+    chargerDonnees();
   }
 
   function handleLogout() {
     localStorage.removeItem("token");
     onLogout();
+  }
+
+  if (pageAdmin) {
+    return <Admin onBack={() => setPageAdmin(false)} />;
   }
 
   if (erreur) return <p>{erreur}</p>;
@@ -51,7 +57,14 @@ export default function Dashboard({ onLogout }) {
   return (
     <div style={{ maxWidth: 400, margin: "50px auto" }}>
       <h1>Bonjour {profil.pseudo} 👋</h1>
+      <p style={{ fontSize: 12, color: "gray" }}>Rôle : {profil.role}</p>
+
       <button onClick={handleLogout}>Se déconnecter</button>
+      {profil.role === "admin" && (
+        <button onClick={() => setPageAdmin(true)} style={{ marginLeft: 8 }}>
+          Espace Administrateur
+        </button>
+      )}
 
       <h2>Statistiques</h2>
       <p>État consommable moyen : {stats.pourcentageEtatConsommable}%</p>

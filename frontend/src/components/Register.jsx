@@ -3,6 +3,7 @@ import { useState } from "react";
 export default function Register({ goToLogin }) {
   const [pseudo, setPseudo] = useState("");
   const [motDePasse, setMotDePasse] = useState("");
+  const [role, setRole] = useState("user");
   const [message, setMessage] = useState("");
 
   async function handleSubmit(e) {
@@ -12,7 +13,7 @@ export default function Register({ goToLogin }) {
       const response = await fetch("http://localhost:4000/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pseudo, motDePasse }),
+        body: JSON.stringify({ pseudo, motDePasse, role }),
       });
 
       const data = await response.json();
@@ -39,6 +40,13 @@ export default function Register({ goToLogin }) {
             onChange={(e) => setMotDePasse(e.target.value)}
             required
           />
+        </div>
+        <div>
+          <label>Rôle</label>
+          <select value={role} onChange={(e) => setRole(e.target.value)}>
+            <option value="user">Utilisateur</option>
+            <option value="admin">Administrateur</option>
+          </select>
         </div>
         <button type="submit">S'inscrire</button>
       </form>
