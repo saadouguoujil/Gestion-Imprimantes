@@ -18,6 +18,7 @@ const etatImpression = [];
 const alertes = [];
 const messages = [];
 const historique = [];
+const backups = [];
 
 // --- Fonction utilitaire pour journaliser une action ---
 function ajouterHistorique(texte) {
@@ -219,4 +220,26 @@ app.delete("/api/admin/users/:id", verifyToken, verifyAdmin, (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`✅ Serveur démarré sur http://localhost:${PORT}`);
+});
+
+// --- Admin : sauvegarde mensuelle des consommables ---
+app.post("/api/admin/backup", verifyToken, verifyAdmin, (req, res) => {
+  const snapshot = {
+    id: Date.now(),
+    date: new Date().toISOString(),
+    parQui: req.user.pseudo,
+    donnees: JSON.parse(JSON.stringify(etatConsommable)), // copie indépendante
+  };
+
+  backups.push(snapshot);
+  ajouterHistorique(
+    `Sauvegarde mensuelle effectuée par ${req.user.pseudo} (${snapshot.donnees.length} éléments)`
+  );
+
+  res.status(201).json({ message: "Sauvegarde effectuée avec succès.", backup: snapshot });
+});
+
+// --- Admin : liste des sauvegardes ---
+app.get("/api/admin/backups", verifyToken, verifyAdmin, (req, res) => {
+  res.json(backups.slice().reverse());
 });
