@@ -5,6 +5,7 @@ export default function Dashboard({ onLogout }) {
   const [profil, setProfil] = useState(null);
   const [stats, setStats] = useState(null);
   const [alertes, setAlertes] = useState([]);
+  const [historique, setHistorique] = useState([]);
   const [composant, setComposant] = useState("Toner Noir");
   const [pourcentage, setPourcentage] = useState(50);
   const [erreur, setErreur] = useState("");
@@ -15,14 +16,16 @@ export default function Dashboard({ onLogout }) {
 
   async function chargerDonnees() {
     try {
-      const [resProfil, resStats, resAlertes] = await Promise.all([
+      const [resProfil, resStats, resAlertes, resHistorique] = await Promise.all([
         fetch("http://localhost:4000/api/profile", { headers }),
         fetch("http://localhost:4000/api/statistiques", { headers }),
         fetch("http://localhost:4000/api/alertes", { headers }),
+        fetch("http://localhost:4000/api/historique", { headers }),
       ]);
       setProfil(await resProfil.json());
       setStats(await resStats.json());
       setAlertes(await resAlertes.json());
+      setHistorique(await resHistorique.json());
     } catch (err) {
       setErreur("Impossible de contacter le serveur.");
     }
@@ -96,6 +99,14 @@ export default function Dashboard({ onLogout }) {
         <div key={a.id} style={{ border: "1px solid red", padding: 8, marginBottom: 8 }}>
           <strong>{a.nom}</strong>
           <p>{a.description}</p>
+        </div>
+      ))}
+
+      <h2>Historique des activités</h2>
+      {historique.length === 0 && <p>Aucune activité enregistrée.</p>}
+      {historique.map((h) => (
+        <div key={h.id} style={{ fontSize: 13, borderBottom: "1px solid #eee", padding: "4px 0" }}>
+          <strong>{new Date(h.date).toLocaleString("fr-FR")}</strong> — {h.texte}
         </div>
       ))}
     </div>

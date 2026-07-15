@@ -5,7 +5,7 @@ const jwt = require("jsonwebtoken");
 
 const app = express();
 const PORT = 4000;
-const JWT_SECRET = "mon-secret-temporaire"; // à mettre dans .env plus tard
+const JWT_SECRET = "mon-secret-temporaire";
 
 app.use(cors());
 app.use(express.json());
@@ -15,6 +15,12 @@ const users = [];
 const etatConsommable = [];
 const alertes = [];
 const messages = [];
+const historique = [];
+
+// --- Fonction utilitaire pour journaliser une action ---
+function ajouterHistorique(texte) {
+  historique.push({ id: Date.now(), texte, date: new Date().toISOString() });
+}
 
 // --- Route de test ---
 app.get("/api/test", (req, res) => {
@@ -35,9 +41,10 @@ app.post("/api/register", async (req, res) => {
   }
 
   const motDePasseHache = await bcrypt.hash(motDePasse, 10);
-  const roleFinal = role === "admin" ? "admin" : "user"; // par défaut : user
+  const roleFinal = role === "admin" ? "admin" : "user";
 
   users.push({ id: Date.now(), pseudo, motDePasse: motDePasseHache, role: roleFinal });
+  ajouterHistorique(`Nouveau compte créé : ${pseudo} (${roleFinal})`);
 
   res.status(201).json({ message: "Compte créé avec succès.", role: roleFinal });
 });
@@ -61,6 +68,8 @@ app.post("/api/login", async (req, res) => {
     JWT_SECRET,
     { expiresIn: "2h" }
   );
+
+  ajouterHistorique(`Connexion : ${pseudo}`);
 
   res.json({ message: "Connexion réussie.", token });
 });
@@ -103,6 +112,8 @@ app.post("/api/etat-consommable", verifyToken, (req, res) => {
   const entree = { id: Date.now(), composant, pourcentage };
   etatConsommable.push(entree);
 
+  ajouterHistorique(`${req.user.pseudo} a importé "${composant}" à ${pourcentage}%`);
+
   if (pourcentage < 15) {
     alertes.push({
       id: Date.now() + 1,
@@ -134,7 +145,12 @@ app.get("/api/alertes", verifyToken, (req, res) => {
   res.json(alertes);
 });
 
-// --- Formulaire de contact (visiteur, pas besoin de token) ---
+// --- Historique ---
+app.get("/api/historique", verifyToken, (req, res) => {
+  res.json(historique.slice().reverse()); // du plus récent au plus ancien
+});
+
+// --- Formulaire de contact ---
 app.post("/api/contact", (req, res) => {
   const { nom, email, sujet, contenu } = req.body;
 
@@ -161,7 +177,10 @@ app.delete("/api/admin/users/:id", verifyToken, verifyAdmin, (req, res) => {
     return res.status(404).json({ message: "Utilisateur introuvable." });
   }
 
+  const pseudoSupprime = users[index].pseudo;
   users.splice(index, 1);
+  ajouterHistorique(`Admin ${req.user.pseudo} a supprimé l'utilisateur : ${pseudoSupprime}`);
+
   res.json({ message: "Utilisateur supprimé." });
 });
 
