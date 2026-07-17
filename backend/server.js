@@ -27,7 +27,7 @@ app.get("/api/test", (req, res) => {
 
 // --- Inscription ---
 app.post("/api/register", async (req, res) => {
-  const { pseudo, motDePasse, role } = req.body;
+  const { pseudo, motDePasse, role, nom, prenom, profession, email } = req.body;
 
   if (!pseudo || !motDePasse) {
     return res.status(400).json({ message: "Pseudo et mot de passe requis." });
@@ -43,8 +43,8 @@ app.post("/api/register", async (req, res) => {
     const roleFinal = role === "admin" ? "admin" : "user";
 
     await pool.query(
-      "INSERT INTO users (pseudo, mot_de_passe, role) VALUES (?, ?, ?)",
-      [pseudo, motDePasseHache, roleFinal]
+      "INSERT INTO users (pseudo, mot_de_passe, role, nom, prenom, profession, email) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      [pseudo, motDePasseHache, roleFinal, nom, prenom, profession, email]
     );
 
     await ajouterHistorique(`Nouveau compte créé : ${pseudo} (${roleFinal})`);
@@ -111,9 +111,49 @@ function verifyAdmin(req, res, next) {
   next();
 }
 
-// --- Route protégée : profil ---
-app.get("/api/profile", verifyToken, (req, res) => {
-  res.json({ id: req.user.id, pseudo: req.user.pseudo, role: req.user.role });
+// --- Consulter son profil ---
+app.get("/api/profile", verifyToken, async (req, res) => {
+  try {
+    const [lignes] = await pool.query(
+      "SELECT id, pseudo, role, nom, prenom, profession, email FROM users WHERE id = ?",
+      [req.user.id]
+    );
+    if (lignes.length === 0) {
+      return res.status(404).json({ message: "Utilisateur introuvable." });
+    }
+    res.json(lignes[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Erreur serveur." });
+  }
+});
+
+// --- Modifier son profil ---
+app.put("/api/profile", verifyToken, async (req, res) => {
+  const { nom, prenom, profession, email } = req.body;
+  try {
+    await pool.query(
+      "UPDATE users SET nom = ?, prenom = ?, profession = ?, email = ? WHERE id = ?",
+      [nom, prenom, profession, email, req.user.id]
+    );
+    await ajouterHistorique(`${req.user.pseudo} a modifié son profil`);
+    res.json({ message: "Profil mis à jour." });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Erreur serveur." });
+  }
+});
+
+// --- Supprimer son propre compte ---
+app.delete("/api/profile", verifyToken, async (req, res) => {
+  try {
+    await pool.query("DELETE FROM users WHERE id = ?", [req.user.id]);
+    await ajouterHistorique(`${req.user.pseudo} a supprimé son propre compte`);
+    res.json({ message: "Compte supprimé." });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Erreur serveur." });
+  }
 });
 
 // --- Import d'un état consommable + alerte automatique ---
@@ -217,7 +257,7 @@ app.get("/api/alertes", verifyToken, async (req, res) => {
 });
 
 // --- Historique ---
-app.get("/api/historique", verifyToken, async (req, res) => {
+app.get("/api/historique", verifyToken, verifyAdmin, async (req, res) => {
   try {
     const [lignes] = await pool.query("SELECT * FROM historique ORDER BY date_creation DESC");
     res.json(lignes);

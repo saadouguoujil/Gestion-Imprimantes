@@ -24,15 +24,13 @@ export default function Contact({ goToLogin }) {
   }
 
   return (
-    <div style={{ maxWidth: 300, margin: "50px auto" }}>
-      <h1>Contactez-nous</h1>
-      {message && <p>{message}</p>}
-      <form onSubmit={handleSubmit}>
-        <div>
+    <div className="container">
+      <div className="card">
+        <h1>Contactez-nous</h1>
+        {message && <div className="message-success">{message}</div>}
+        <form onSubmit={handleSubmit}>
           <label>Nom</label>
           <input value={form.nom} onChange={(e) => update("nom", e.target.value)} required />
-        </div>
-        <div>
           <label>Email</label>
           <input
             type="email"
@@ -40,22 +38,25 @@ export default function Contact({ goToLogin }) {
             onChange={(e) => update("email", e.target.value)}
             required
           />
-        </div>
-        <div>
           <label>Sujet</label>
           <input value={form.sujet} onChange={(e) => update("sujet", e.target.value)} />
-        </div>
-        <div>
           <label>Message</label>
           <textarea
+            rows="4"
             value={form.contenu}
             onChange={(e) => update("contenu", e.target.value)}
             required
           />
+          <button type="submit" style={{ width: "100%" }}>
+            Envoyer
+          </button>
+        </form>
+        <div className="footer-links">
+          <button className="btn-link" onClick={goToLogin}>
+            Retour à la connexion
+          </button>
         </div>
-        <button type="submit">Envoyer</button>
-      </form>
-      <button onClick={goToLogin}>Retour à la connexion</button>
+      </div>
     </div>
   );
 }

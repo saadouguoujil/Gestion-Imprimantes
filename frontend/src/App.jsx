@@ -22,14 +22,12 @@ function App() {
   }
 
   return (
-    <div>
-      <Login onLoggedIn={() => setPage("dashboard")} />
-      <div style={{ textAlign: "center" }}>
-        <button onClick={() => setPage("contact")}>Nous contacter</button>
-        <button onClick={() => setPage("register")}>Créer un compte</button>
-      </div>
-    </div>
-  );
+  <Login
+    onLoggedIn={() => setPage("dashboard")}
+    goToRegister={() => setPage("register")}
+    goToContact={() => setPage("contact")}
+  />
+);
 }
 
 export default App;
